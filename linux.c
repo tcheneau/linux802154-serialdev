@@ -52,11 +52,6 @@ void give_to_linux(volatile packet_t *p) {
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
 #define PHY_CHANNEL_OFFSET 1 
 
-static uint8_t have_packet = 0;
-
-void maca_rx_callback(volatile packet_t *p __attribute__((unused))) {
-	have_packet = 1;
-}
 
 int timed_getc(volatile uint8_t *c) {
 	volatile uint32_t timeout;
@@ -105,8 +100,6 @@ void main(void) {
 					give_to_linux(p);
 					free_packet(p);
 					continue;
-				} else {
-					have_packet = 0;
 				}
 			}
 			if(uart1_can_get()) { sb[0] = uart1_getc(); }
