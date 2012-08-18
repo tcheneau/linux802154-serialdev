@@ -49,7 +49,7 @@ void give_to_linux(volatile packet_t *p) {
 //#define SAMP UCON_SAMP_16X
 
 /* How long to wait for command bytes */
-#define GETC_TIMEOUT  4096
+#define GETC_TIMEOUT  8192
 /* linux uses channels 1-16 the maca driver expects 0-15 */
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
 #define PHY_CHANNEL_OFFSET 1 
