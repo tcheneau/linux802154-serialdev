@@ -341,6 +341,97 @@ data_xmit_block_end:
 					uart1_putc(buf[i]);
 				break;
 			}
+			case CMD_SET_PAN_ID: {
+				uint8_t buf[2];
+				for (i=0; i < 2; i++)
+				{
+						if(timed_getc(&(buf[i])) < 0 ) {
+							printf("zb");
+							uart1_putc(RESP_SET_PAN_ID);
+							uart1_putc(STATUS_ERR);
+							break;
+						}
+				}
+
+				panid = (buf[0] << 8) | buf[1];
+				*MACA_MACPANID = panid;
+				
+				printf("zb");
+				uart1_putc(RESP_SET_PAN_ID);
+				uart1_putc(STATUS_SUCCESS);
+				break;
+			}
+			case CMD_SET_SHORT_ADDRESS: {
+				uint8_t buf[IEEE802154_SHORT_ADDR_LEN];
+				for (i=0; i < IEEE802154_SHORT_ADDR_LEN; i++)
+				{
+						if(timed_getc(&(buf[i])) < 0 ) {
+							printf("zb");
+							uart1_putc(RESP_SET_SHORT_ADDRESS);
+							uart1_putc(STATUS_ERR);
+							break;
+						}
+				}
+
+				shortaddr = (buf[0] << 8) | buf[1];
+				*MACA_MAC16ADDR = shortaddr;
+
+				printf("zb");
+				uart1_putc(RESP_SET_SHORT_ADDRESS);
+				uart1_putc(STATUS_SUCCESS);
+				break;
+			}
+			case CMD_SET_LONG_ADDRESS: {
+				nvmType_t type = 1; // could be detected, but somehow it fails the first time for me
+				nvmErr_t err;	
+				uint8_t buf[IEEE802154_ADDR_LEN];
+
+				for (i=0; i < IEEE802154_ADDR_LEN; i++)
+				{
+						if(timed_getc(&(buf[i])) < 0 ) {
+							printf("zb");
+							uart1_putc(RESP_SET_LONG_ADDRESS);
+							uart1_putc(STATUS_ERR);
+							break;
+						}
+				}
+
+				printf("zb");
+				uart1_putc(RESP_SET_LONG_ADDRESS);
+				/* store in RAM */
+				longaddr_hi = (buf[0] << 24) |(buf[1] << 16) |(buf[2] << 8) | buf[3];
+				longaddr_lo = (buf[4] << 24) |(buf[5] << 16) |(buf[6] << 8) | buf[7];
+				*MACA_MAC64HI = longaddr_hi;
+				*MACA_MAC64LO = longaddr_lo;
+
+				/* store to flash */
+				vreg_init();
+
+				//	somehow, detection fails the first time, so it can not be relied on
+				//	nvm_detect(gNvmInternalInterface_c, &type);
+
+				/* disable flash protection */
+				nvm_setsvar(0);
+
+				nvm_erase(gNvmInternalInterface_c, type, 0x40000000); 
+
+				err =  nvm_write(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN); 
+				if (err)
+					uart1_putc(STATUS_ERR);
+				else
+					uart1_putc(STATUS_SUCCESS);
+
+				/* TC: I'm not sure it is useful */
+				for(i=0; i< IEEE802154_ADDR_LEN; ++i)
+					buf[i] = 0;
+
+				nvm_read(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN);
+				
+				/* enable flash protection */
+				nvm_setsvar(1);
+
+				break;
+			}
 			default:
 				break;
 			}

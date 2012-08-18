@@ -47,6 +47,9 @@ enum {
 	RESP_RECV_BLOCK		= 0x0b, /* u8 id, u8 status */
 	RESP_RECV_STREAM	= 0x0c, /* u8 id, u8 status */
 	CMD_ADDRESS		= 0x0d, /* u8 id */
+	CMD_SET_PAN_ID = 0x0f, /* u8 id, u8 u8 panid (MSB first) */
+	CMD_SET_SHORT_ADDRESS = 0x10, /* u8 id, u8 u8 address  (MSB first)*/
+	CMD_SET_LONG_ADDRESS = 0x11, /* u8 id, u8 u8 u8 u8 u8 u8 u8 u8 address (MSB first) */
 
 	/* Firmware to Driver */
 	RESP_OPEN		= 0x81, /* u8 id, u8 status */
@@ -60,6 +63,9 @@ enum {
 	DATA_RECV_BLOCK		= 0x8b, /* u8 id, u8 lq, u8 len, u8 data[len] */
 	DATA_RECV_STREAM	= 0x8c, /* u8 id, u8 c */
 	RESP_ADDRESS		= 0x8d, /* u8 id, u8 status, u8 u8 u8 u8 u8 u8 u8 u8 address */
+	RESP_SET_PAN_ID     = 0x8f, /* u8 id, u8 status */
+	RESP_SET_SHORT_ADDRESS = 0x90, /* u8 id, u8 status */
+	RESP_SET_LONG_ADDRESS = 0x91, /* u8 id, u8 status */
 };
 
 enum {
