@@ -98,7 +98,7 @@ void main(void) {
 				state = RX_MODE;
 			} 
 			if(state == RX_MODE) {
-				if((p = rx_packet())) { 
+				if ( rx_head && (p = rx_packet()) ) {
 					give_to_linux(p);
 					free_packet(p);
 					continue;
