@@ -38,9 +38,11 @@ void give_to_linux(volatile packet_t *p) {
 
 /* Baud rate */
 #define MOD 9999
+/*  1843200 bps, INC=6142, MOD=9999, 24Mhz 16x samp */
+/*  921600 bps, INC=6142, MOD=9999, 24Mhz 8x samp */
 /*  230400 bps, INC=767, MOD=9999, 24Mhz 16x samp */
 /*  115200 bps, INC=767, MOD=9999, 24Mhz 8x samp */
-#define INC 767  
+#define INC 6142 
 /*  921600 bps, MOD=9999, 24Mhz 16x samp */
 //#define INC 3071 
 #define SAMP UCON_SAMP_8X
