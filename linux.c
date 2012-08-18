@@ -5,6 +5,7 @@
 #include <board.h>
 #include <stdio.h> /* For printf() */
 #include <errno.h>
+#include <string.h>
 
 #ifndef MAC_ADDR_NVM
 #define MAC_ADDR_NVM 0x1E000
@@ -13,6 +14,34 @@
 #ifndef IEEE802154_ADDR_LEN
 #define IEEE802154_ADDR_LEN 8
 #endif
+
+#ifndef IEEE802154_SHORT_ADDR_LEN
+#define IEEE802154_SHORT_ADDR_LEN 2
+#endif
+
+
+#ifndef BLOCKING_TX
+#define BLOCKING_TX 1
+#ifndef AUTO_ACK
+#define AUTO_ACK 1
+#endif
+#endif
+
+
+#ifdef BLOCKING_TX
+/* status codes */
+#define SUCCESS          0 
+#define NO_ACK           5
+static volatile uint8_t tx_complete;
+static volatile uint8_t tx_status;
+#endif
+
+#define ACK_RETRY 5
+
+static volatile uint32_t panid; 
+static volatile uint32_t shortaddr;
+static volatile uint32_t longaddr_hi;
+static volatile uint32_t longaddr_lo;
 
 /* Issues */
 /* handle state=TX_STATE, tx_head != 0 in wait for start1 condition better */
@@ -54,6 +83,29 @@ void give_to_linux(volatile packet_t *p) {
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
 #define PHY_CHANNEL_OFFSET 1 
 
+static uint8_t current_channel = 0;
+
+static packet_t cached_p;
+
+void maca_tx_callback(volatile packet_t *p __attribute__((unused))) {
+#if BLOCKING_TX
+	tx_complete = 1;
+	tx_status = p->status;
+#endif
+}
+
+void set_maca_vars(void) {
+	*MACA_MACPANID = panid;
+	*MACA_MAC16ADDR = shortaddr;
+	*MACA_MAC64HI = longaddr_hi;
+	*MACA_MAC64LO = longaddr_lo;
+
+#if AUTO_ACK
+	*MACA_TXACKDELAY = 68; /* 68 puts the tx ack at about the correct spot */
+	*MACA_RXACKDELAY = 30; /* start reception 100us before ack should arrive */
+	*MACA_RXEND = 180; /* 750us receive window */
+#endif /* AUTO_ACK */
+}
 
 int timed_getc(volatile uint8_t *c) {
 	volatile uint32_t timeout;
@@ -90,6 +142,7 @@ void main(void) {
 		while(sb[0] != START_BYTE1) {
 
 			check_maca();
+			set_maca_vars();
 
 			if((state == TX_MODE) &&
 			   (tx_head == 0)) {
@@ -130,6 +183,11 @@ void main(void) {
 				set_power(0x12); /* 4.5dbm */
 				set_channel(15); /* channel 26 */
 				maca_on();
+
+				set_maca_vars();
+#if AUTO_ACK
+				set_prm_mode(AUTOACK);
+#endif /* AUTO_ACK */
 				printf("zb");
 				uart1_putc(RESP_OPEN);
 				uart1_putc(STATUS_SUCCESS);
@@ -149,6 +207,7 @@ void main(void) {
 					uart1_putc(STATUS_ERR);
 					break;
 				}
+				current_channel = parm1;
 				set_channel(parm1-PHY_CHANNEL_OFFSET);
 				maca_on();
 				printf("zb");
@@ -178,44 +237,91 @@ void main(void) {
 				uart1_putc(RESP_SET_STATE);
 				uart1_putc(STATUS_SUCCESS);
 				break;
-			case DATA_XMIT_BLOCK:
+			case DATA_XMIT_BLOCK: {
+#if AUTO_ACK
+				volatile uint8_t retry = 0;
+#endif
+				//memset(&cached_p, 0, sizeof(cached_p));
 
-				/* send packet here */
-				if( ( p = get_free_packet() ) ) {
 
-					if(timed_getc(&p->length) < 0 ) {
+				if(timed_getc(& cached_p.length) < 0 ) {
+					printf("zb");
+					uart1_putc(RESP_XMIT_BLOCK);
+					uart1_putc(STATUS_ERR);
+					state = RX_MODE;
+					break;
+				}
+				
+				for(i=0; i < cached_p.length; i++) {
+					if(timed_getc(&(cached_p.data[i])) < 0 ) {
 						printf("zb");
 						uart1_putc(RESP_XMIT_BLOCK);
 						uart1_putc(STATUS_ERR);
 						state = RX_MODE;
-						free_packet(p);
-						break;
+						goto data_xmit_block_end;
 					}
-					
-					for(i=0; i < p->length; i++) {
-						if(timed_getc(&(p->data[ i + p->offset])) < 0 ) {
-							printf("zb");
-							uart1_putc(RESP_XMIT_BLOCK);
-							uart1_putc(STATUS_ERR);
-							state = RX_MODE;
-							free_packet(p);
-							goto data_xmit_block_end;
-						}
-					}
-				      					
+				}
+
+				state = TX_MODE;
+
+sendpkt:
+
+				/* send packet here */
+				if( ( p = get_free_packet() ) ) {
+#if BLOCKING_TX
+					tx_complete = 0;
+#endif /* BLOCKING_TX */
+					int status = STATUS_SUCCESS;
+
+					memcpy((packet_t * ) p, &cached_p, sizeof(packet_t));
+
 					tx_packet(p);
 					
+#if BLOCKING_TX
+					/* block until tx_complete, set by maca_tx_callback */
+					while(!tx_complete && (tx_head != 0)) {;}
+
+					switch(tx_status) {
+						case SUCCESS:
+							status = STATUS_SUCCESS;
+							break;
+#if AUTO_ACK
+						case NO_ACK:
+							if (retry < ACK_RETRY)
+							{
+								++retry;
+								goto sendpkt;
+							}
+							else
+							{
+								state = RX_MODE;
+								status = STATUS_BUSY_TX;
+							}
+							break;
+#endif /* AUTO_ACK */
+						case BUSY: // CCA failed
+							// TODO: implement simplistic CSMA-CA
+							// for now, just try to send as fast as possible
+							goto sendpkt;
+							break;
+	
+						default:
+							status = STATUS_ERR;
+					}
+#endif /* BLOCKING_TX */
 					printf("zb");
 					uart1_putc(RESP_XMIT_BLOCK);
-					uart1_putc(STATUS_SUCCESS);
+					uart1_putc(status);
 
 				} else {
 					printf("zb");
 					uart1_putc(RESP_XMIT_BLOCK);
 					uart1_putc(STATUS_BUSY);
 				}
+				state = RX_MODE;
 data_xmit_block_end:
 				break;
+			}
 			case CMD_ADDRESS: {
 				uint8_t buf[IEEE802154_ADDR_LEN];
 				nvmType_t type = 0;
