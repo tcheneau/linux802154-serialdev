@@ -220,11 +220,13 @@ void main(void) {
 				uart1_putc(STATUS_ERR);
 				uart1_putc(0);
 				break;
+			// legacy command: should never be called with the new linux kernel driver (serial.c)
 			case CMD_CCA:
 				printf("zb");
 				uart1_putc(RESP_CCA);
 				uart1_putc(STATUS_SUCCESS);
 				break;
+			// legacy command: should never be called with the new linux kernel driver (serial.c)
 			case CMD_SET_STATE:
 				if(timed_getc(&state) < 0 ) {
 					printf("zb");
