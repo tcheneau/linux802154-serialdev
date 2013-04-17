@@ -126,12 +126,12 @@ void main(void) {
 	volatile packet_t *p = 0;
 
 	trim_xtal();
-	uart1_init(INC, MOD, SAMP);
+	uart_init(UART1, 921600);
 	maca_init();
 	maca_off();
 
 	while(1) {
-		
+
 		/* clear out sb */
 		for(i = 0; i < NUM_START_BYTES; i++) {
 			sb[i] = 0;

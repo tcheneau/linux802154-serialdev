@@ -1,0 +1,3 @@
+[submodule "libmc1322x"]
+	path = libmc1322x
+	url = https://github.com/tcheneau/libmc1322x.git
