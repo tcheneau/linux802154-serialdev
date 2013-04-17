@@ -28,9 +28,9 @@
 #endif
 
 
-#ifdef BLOCKING_TX
+#if BLOCKING_TX
 /* status codes */
-#define SUCCESS          0 
+#define SUCCESS          0
 #define NO_ACK           5
 static volatile uint8_t tx_complete;
 static volatile uint8_t tx_status;
@@ -38,7 +38,7 @@ static volatile uint8_t tx_status;
 
 #define ACK_RETRY 5
 
-static volatile uint32_t panid; 
+static volatile uint32_t panid;
 static volatile uint32_t shortaddr;
 static volatile uint32_t longaddr_hi;
 static volatile uint32_t longaddr_lo;
@@ -57,7 +57,7 @@ void give_to_linux(volatile packet_t *p) {
 	printf("zb");
 	uart1_putc(DATA_RECV_BLOCK);
 	uart1_putc(p->lqi);
-	uart1_putc(p->length); 
+	uart1_putc(p->length);
 
 	for(i=0; i < p->length ; i++) {
 		uart1_putc(p->data[ i + p->offset]);
@@ -69,7 +69,7 @@ void give_to_linux(volatile packet_t *p) {
 #define GETC_TIMEOUT  8192
 /* linux uses channels 1-16 the maca driver expects 0-15 */
 /* and 802.15.4 is 11-26 (for 2.4GHz) */
-#define PHY_CHANNEL_OFFSET 1 
+#define PHY_CHANNEL_OFFSET 1
 
 static uint8_t current_channel = 0;
 
@@ -101,12 +101,12 @@ int timed_getc(volatile uint8_t *c) {
 		if(uart1_can_get()) {
 			*c = uart1_getc();
 			return 1;
-		} 
+		}
 	}
 	return -ETIMEDOUT;
 }
 
-void main(void) {	
+void main(void) {
 	volatile uint8_t sb[NUM_START_BYTES];
 	volatile uint32_t i;
 	volatile uint8_t cmd, parm1;
@@ -137,7 +137,7 @@ void main(void) {
 				/* this could happen if the RX_MODE */
 				/* set_state command is missed */
 				state = RX_MODE;
-			} 
+			}
 			if(state == RX_MODE) {
 				if ( rx_head && (p = rx_packet()) ) {
 					give_to_linux(p);
@@ -156,7 +156,7 @@ void main(void) {
 				sb[0] = 'X'; sb[1] = 'X';
 			}
 		}
-		
+
 		if(start_command()) {
 			/* do a command */
 			cmd = 0;
@@ -164,7 +164,7 @@ void main(void) {
 			if(timed_getc(&cmd) < 0 ) {
 				cmd = 0;
 			}
-			
+
 			switch(cmd)
 			{
 			case CMD_OPEN:
@@ -188,7 +188,7 @@ void main(void) {
 				uart1_putc(STATUS_SUCCESS);
 				break;
 			case CMD_SET_CHANNEL:
-				maca_off();				
+				maca_off();
 				if(timed_getc(&parm1) < 0 ) {
 					printf("zb");
 					uart1_putc(RESP_SET_CHANNEL);
@@ -241,7 +241,7 @@ void main(void) {
 					state = RX_MODE;
 					break;
 				}
-				
+
 				for(i=0; i < cached_p.length; i++) {
 					if(timed_getc(&(cached_p.data[i])) < 0 ) {
 						printf("zb");
@@ -266,7 +266,7 @@ sendpkt:
 					memcpy((packet_t * ) p, &cached_p, sizeof(packet_t));
 
 					tx_packet(p);
-					
+
 #if BLOCKING_TX
 					/* block until tx_complete, set by maca_tx_callback */
 					while(!tx_complete && (tx_head != 0)) {;}
@@ -294,7 +294,7 @@ sendpkt:
 							// for now, just try to send as fast as possible
 							goto sendpkt;
 							break;
-	
+
 						default:
 							status = STATUS_ERR;
 					}
@@ -315,7 +315,7 @@ data_xmit_block_end:
 			case CMD_ADDRESS: {
 				uint8_t buf[IEEE802154_ADDR_LEN];
 				nvmType_t type = 0;
-				nvmErr_t err;	
+				nvmErr_t err;
 				int i;
 
 				printf("zb");
@@ -345,7 +345,7 @@ data_xmit_block_end:
 
 				panid = (buf[0] << 8) | buf[1];
 				*MACA_MACPANID = panid;
-				
+
 				printf("zb");
 				uart1_putc(RESP_SET_PAN_ID);
 				uart1_putc(STATUS_SUCCESS);
@@ -373,7 +373,7 @@ data_xmit_block_end:
 			}
 			case CMD_SET_LONG_ADDRESS: {
 				nvmType_t type = 1; // could be detected, but somehow it fails the first time for me
-				nvmErr_t err;	
+				nvmErr_t err;
 				uint8_t buf[IEEE802154_ADDR_LEN];
 
 				for (i=0; i < IEEE802154_ADDR_LEN; i++)
@@ -403,9 +403,9 @@ data_xmit_block_end:
 				/* disable flash protection */
 				nvm_setsvar(0);
 
-				nvm_erase(gNvmInternalInterface_c, type, 0x40000000); 
+				nvm_erase(gNvmInternalInterface_c, type, 0x40000000);
 
-				err =  nvm_write(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN); 
+				err =  nvm_write(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN);
 				if (err)
 					uart1_putc(STATUS_ERR);
 				else
@@ -416,7 +416,7 @@ data_xmit_block_end:
 					buf[i] = 0;
 
 				nvm_read(gNvmInternalInterface_c, type, buf, MAC_ADDR_NVM, IEEE802154_ADDR_LEN);
-				
+
 				/* enable flash protection */
 				nvm_setsvar(1);
 
