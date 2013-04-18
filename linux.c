@@ -27,6 +27,11 @@
 #endif
 #endif
 
+void maca_rx_callback(volatile packet_t *p) {
+        (void)p;
+        gpio_data_set(1ULL<< LED_GREEN);
+        gpio_data_reset(1ULL<< LED_GREEN);
+}
 
 #if BLOCKING_TX
 /* status codes */
@@ -80,6 +85,8 @@ void maca_tx_callback(volatile packet_t *p __attribute__((unused))) {
 	tx_complete = 1;
 	tx_status = p->status;
 #endif
+	gpio_data_set(1ULL<< LED_RED);
+	gpio_data_reset(1ULL<< LED_RED);
 }
 
 void set_maca_vars(void) {
@@ -113,6 +120,14 @@ void main(void) {
 	static volatile uint8_t state = IDLE_MODE;
 	volatile packet_t *p = 0;
 
+	gpio_data(0);
+
+	gpio_pad_dir_set( 1ULL << LED_GREEN );
+	gpio_pad_dir_set( 1ULL << LED_RED );
+	/* read from the data register instead of the pad */
+	/* this is needed because the led clamps the voltage low */
+	gpio_data_sel( 1ULL << LED_GREEN);
+	gpio_data_sel( 1ULL << LED_RED);
 	trim_xtal();
 	uart_init(UART1, 921600);
 	maca_init();
