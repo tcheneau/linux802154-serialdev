@@ -19,7 +19,6 @@
 #define IEEE802154_SHORT_ADDR_LEN 2
 #endif
 
-
 #ifndef BLOCKING_TX
 #define BLOCKING_TX 1
 #ifndef AUTO_ACK
@@ -128,8 +127,11 @@ void main(void) {
 	/* this is needed because the led clamps the voltage low */
 	gpio_data_sel( 1ULL << LED_GREEN);
 	gpio_data_sel( 1ULL << LED_RED);
+
+	/* trim the reference osc. to 24MHz */
 	trim_xtal();
 	uart_init(UART1, 921600);
+	vreg_init();
 	maca_init();
 	maca_off();
 
@@ -186,6 +188,15 @@ void main(void) {
 				set_power(0x12); /* 4.5dbm */
 				set_channel(15); /* channel 26 */
 				maca_on();
+				/* TC: I have no idea why this is about: */
+				/* sets up tx_on, should be a board specific item */
+				gpio_pad_dir_set( 1ULL << 44 );
+
+				GPIO->FUNC_SEL_44 = 1;
+				GPIO->PAD_DIR_SET_44 = 1;
+
+				GPIO->FUNC_SEL_45 = 2;
+				GPIO->PAD_DIR_SET_45 = 1;
 
 				set_maca_vars();
 #if AUTO_ACK
