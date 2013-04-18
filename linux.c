@@ -269,7 +269,9 @@ void main(void) {
 
 				state = TX_MODE;
 
+#if BLOCKING_TX
 sendpkt:
+#endif
 
 				/* send packet here */
 				if( ( p = get_free_packet() ) ) {
