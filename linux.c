@@ -253,8 +253,15 @@ void main(void) {
 #endif
 				memset(&cached_p, 0, sizeof(cached_p));
 
+				if(timed_getc(&cached_p.length) < 0 ) {
+					printf("zb");
+					uart1_putc(RESP_XMIT_BLOCK);
+					uart1_putc(STATUS_ERR);
+					state = RX_MODE;
+					break;
+				}
 
-				if(timed_getc(& cached_p.length) < 0 ) {
+				if (cached_p.length > MAX_PAYLOAD_SIZE) {
 					printf("zb");
 					uart1_putc(RESP_XMIT_BLOCK);
 					uart1_putc(STATUS_ERR);
