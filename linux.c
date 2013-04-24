@@ -28,8 +28,6 @@
 
 void maca_rx_callback(volatile packet_t *p) {
         (void)p;
-        gpio_data_set(1ULL<< LED_GREEN);
-        gpio_data_reset(1ULL<< LED_GREEN);
 }
 
 #if BLOCKING_TX
@@ -84,8 +82,6 @@ void maca_tx_callback(volatile packet_t *p __attribute__((unused))) {
 	tx_complete = 1;
 	tx_status = p->status;
 #endif
-	gpio_data_set(1ULL<< LED_RED);
-	gpio_data_reset(1ULL<< LED_RED);
 }
 
 void set_maca_vars(void) {
@@ -118,15 +114,6 @@ void main(void) {
 	volatile uint8_t cmd, parm1;
 	static volatile uint8_t state = IDLE_MODE;
 	volatile packet_t *p = 0;
-
-	gpio_data(0);
-
-	gpio_pad_dir_set( 1ULL << LED_GREEN );
-	gpio_pad_dir_set( 1ULL << LED_RED );
-	/* read from the data register instead of the pad */
-	/* this is needed because the led clamps the voltage low */
-	gpio_data_sel( 1ULL << LED_GREEN);
-	gpio_data_sel( 1ULL << LED_RED);
 
 	/* trim the reference osc. to 24MHz */
 	trim_xtal();
@@ -188,13 +175,14 @@ void main(void) {
 				set_power(0x12); /* 4.5dbm */
 				set_channel(15); /* channel 26 */
 				maca_on();
-				/* TC: I have no idea why this is about: */
-				/* sets up tx_on, should be a board specific item */
-				gpio_pad_dir_set( 1ULL << 44 );
 
+				/* cause the red LED to blink when transmitting
+				 * enable the TX Seq Mgr (see datasheet, p. 312) */
 				GPIO->FUNC_SEL_44 = 1;
 				GPIO->PAD_DIR_SET_44 = 1;
 
+				/* cause the green LED to stay steading when receiving
+				 * enable the RX Seq Mgr (see datasheet, p. 312) */
 				GPIO->FUNC_SEL_45 = 2;
 				GPIO->PAD_DIR_SET_45 = 1;
 
@@ -209,6 +197,11 @@ void main(void) {
 			case CMD_CLOSE:
 //				maca_off();
 				free_all_packets();
+
+				/* disable the LEDs */
+				GPIO->PAD_DIR_SET_44 = 0;
+				GPIO->PAD_DIR_SET_45 = 0;
+
 				printf("zb");
 				uart1_putc(RESP_CLOSE);
 				uart1_putc(STATUS_SUCCESS);
