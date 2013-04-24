@@ -79,8 +79,8 @@ static packet_t cached_p;
 
 void maca_tx_callback(volatile packet_t *p __attribute__((unused))) {
 #if BLOCKING_TX
-	tx_complete = 1;
 	tx_status = p->status;
+	tx_complete = 1;
 #endif
 }
 
@@ -146,6 +146,7 @@ void main(void) {
 				if ( rx_head && (p = rx_packet()) ) {
 					give_to_linux(p);
 					free_packet(p);
+					p = NULL;
 					continue;
 				}
 			}
@@ -195,7 +196,7 @@ void main(void) {
 				uart1_putc(STATUS_SUCCESS);
 				break;
 			case CMD_CLOSE:
-//				maca_off();
+				maca_off();
 				free_all_packets();
 
 				/* disable the LEDs */
@@ -250,7 +251,7 @@ void main(void) {
 #if AUTO_ACK
 				volatile uint8_t retry = 0;
 #endif
-				//memset(&cached_p, 0, sizeof(cached_p));
+				memset(&cached_p, 0, sizeof(cached_p));
 
 
 				if(timed_getc(& cached_p.length) < 0 ) {
@@ -267,7 +268,7 @@ void main(void) {
 						uart1_putc(RESP_XMIT_BLOCK);
 						uart1_putc(STATUS_ERR);
 						state = RX_MODE;
-						goto data_xmit_block_end;
+						break;
 					}
 				}
 
@@ -290,7 +291,7 @@ sendpkt:
 
 #if BLOCKING_TX
 					/* block until tx_complete, set by maca_tx_callback */
-					while(!tx_complete && (tx_head != 0)) {;}
+					while(!tx_complete) {;}
 
 					switch(tx_status) {
 						case SUCCESS:
@@ -330,7 +331,6 @@ sendpkt:
 					uart1_putc(STATUS_BUSY);
 				}
 				state = RX_MODE;
-data_xmit_block_end:
 				break;
 			}
 			case CMD_ADDRESS: {
