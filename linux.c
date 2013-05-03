@@ -298,7 +298,7 @@ sendpkt:
 
 #if BLOCKING_TX
 					/* block until tx_complete, set by maca_tx_callback */
-					while(!tx_complete) {;}
+					while(!tx_complete) {check_maca();}
 
 					switch(tx_status) {
 						case SUCCESS:
